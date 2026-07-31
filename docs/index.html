@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>게시판 알림 설정</title>
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --card: #ffffff;
+    --border: #dfe3e8;
+    --text: #1b1f24;
+    --muted: #656d76;
+    --accent: #2563eb;
+    --accent-text: #ffffff;
+    --danger: #d43a3a;
+    --ok: #1a7f37;
+    --input-bg: #ffffff;
+    --chip: #eef1f5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0d1117;
+      --card: #161b22;
+      --border: #2b323b;
+      --text: #e6edf3;
+      --muted: #9198a1;
+      --accent: #3b82f6;
+      --accent-text: #ffffff;
+      --danger: #f26d6d;
+      --ok: #4ac26b;
+      --input-bg: #0d1117;
+      --chip: #21262d;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 16px 12px 64px;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+      "Noto Sans KR", Roboto, sans-serif;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 12px; }
+  .sub { color: var(--muted); font-size: 13px; margin: 0 0 20px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+  label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 5px; }
+  label .hint { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 2px; }
+  input[type=text], input[type=password], select, textarea {
+    width: 100%;
+    padding: 10px 11px;
+    font-size: 16px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  textarea { min-height: 64px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .row > * { flex: 1 1 140px; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--chip);
+    color: var(--text);
+    cursor: pointer;
+  }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button.danger { color: var(--danger); }
+  button.block { width: 100%; }
+  .switch { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; font-size: 14px; font-weight: 600; }
+  .switch input { width: 20px; height: 20px; accent-color: var(--accent); }
+  .site {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 10px;
+    background: var(--card);
+  }
+  .site.off { opacity: .55; }
+  .site .name { font-weight: 700; }
+  .site .meta { color: var(--muted); font-size: 12px; word-break: break-all; margin-top: 3px; }
+  .site .actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .site .actions button { padding: 7px 11px; font-size: 13px; flex: 1 1 auto; }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 99px; background: var(--chip); color: var(--muted); margin-left: 6px; vertical-align: 1px; }
+  .notice { font-size: 12px; color: var(--muted); background: var(--chip); padding: 9px 11px; border-radius: 8px; margin-top: 10px; }
+  #status { position: sticky; bottom: 0; margin-top: 12px; }
+  #status .msg { padding: 10px 12px; border-radius: 8px; font-size: 13px; border: 1px solid var(--border); background: var(--card); }
+  .msg.err { color: var(--danger); }
+  .msg.ok { color: var(--ok); }
+  dialog {
+    width: min(680px, calc(100% - 20px));
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--card);
+    color: var(--text);
+    padding: 16px;
+  }
+  dialog::backdrop { background: rgba(0,0,0,.55); }
+  .dialog-actions { display: flex; gap: 8px; margin-top: 18px; position: sticky; bottom: -16px; background: var(--card); padding: 10px 0 0; }
+  .dialog-actions button { flex: 1; }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>게시판 알림 설정</h1>
+  <p class="sub">감시할 게시판을 등록하면 매일 09:00(KST)에 신규 글을 텔레그램으로 보냅니다.</p>
+
+  <div class="card">
+    <h2>저장소 &amp; 토큰</h2>
+    <div class="row">
+      <div>
+        <label for="owner">Owner</label>
+        <input type="text" id="owner" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      </div>
+      <div>
+        <label for="repo">Repository</label>
+        <input type="text" id="repo" autocapitalize="off" autocorrect="off" spellcheck="false" />
+      </div>
+    </div>
+    <label for="token">GitHub PAT (fine-grained)
+      <span class="hint">Contents: Read and write / Actions: Read and write 권한 필요</span>
+    </label>
+    <input type="password" id="token" autocomplete="off" placeholder="github_pat_..." />
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="btn-save-token">토큰 저장</button>
+      <button id="btn-clear-token">토큰 삭제</button>
+      <button id="btn-reload">설정 불러오기</button>
+    </div>
+    <p class="notice">🔒 토큰은 이 브라우저의 localStorage 에만 저장되며 서버로 전송되지 않습니다.
+      공용 기기에서는 사용 후 반드시 <b>토큰 삭제</b>를 눌러주세요.</p>
+  </div>
+
+  <div class="card">
+    <h2>감시 사이트 <span class="tag" id="site-count">0</span></h2>
+    <div id="sites"></div>
+    <button class="primary block" id="btn-add" style="margin-top:6px">+ 사이트 추가</button>
+  </div>
+
+  <div id="status"></div>
+</div>
+
+<dialog id="editor">
+  <h2 id="editor-title">사이트 추가</h2>
+  <form id="form" method="dialog">
+    <label for="f-id">ID <span class="hint">영문/숫자/하이픈. 저장 후 변경하면 알림 기준선이 초기화됩니다.</span></label>
+    <input type="text" id="f-id" required autocapitalize="off" autocorrect="off" spellcheck="false" />
+
+    <label for="f-name">이름 <span class="hint">알림 메시지 첫 줄에 표시됩니다.</span></label>
+    <input type="text" id="f-name" required />
+
+    <label for="f-url">주소 <span class="hint">게시판 목록 페이지 또는 RSS 피드 URL</span></label>
+    <input type="text" id="f-url" required inputmode="url" autocapitalize="off" spellcheck="false" />
+
+    <label for="f-mode">방식</label>
+    <select id="f-mode">
+      <option value="html">html (HTML 파싱)</option>
+      <option value="rss">rss (RSS/Atom 피드)</option>
+    </select>
+
+    <div id="html-fields">
+      <label for="f-item-selector">item_selector <span class="hint">글 링크를 고르는 CSS 선택자. 예: a[href*="articleNo="]</span></label>
+      <input type="text" id="f-item-selector" autocapitalize="off" spellcheck="false" />
+
+      <label for="f-title-attr">title_attr <span class="hint">제목을 담은 속성명. 비우면 링크 텍스트를 사용합니다.</span></label>
+      <input type="text" id="f-title-attr" autocapitalize="off" spellcheck="false" />
+
+      <label for="f-title-strip">title_strip <span class="hint">제목에서 지울 문구. 한 줄에 하나씩.</span></label>
+      <textarea id="f-title-strip" spellcheck="false"></textarea>
+
+      <label for="f-date-regex">date_regex <span class="hint">날짜를 뽑는 정규식. 예: \d{4}-\d{2}-\d{2}</span></label>
+      <input type="text" id="f-date-regex" autocapitalize="off" spellcheck="false" />
+    </div>
+
+    <label for="f-id-strategy">id_strategy <span class="hint">글을 구분하는 기준</span></label>
+    <select id="f-id-strategy">
+      <option value="href_param">href_param — 링크의 쿼리 파라미터 값</option>
+      <option value="href_hash">href_hash — 링크 전체 해시</option>
+      <option value="title_hash">title_hash — 제목 해시</option>
+      <option value="rss_guid">rss_guid — 피드의 guid/link</option>
+    </select>
+
+    <div id="id-param-field">
+      <label for="f-id-param">id_param <span class="hint">href_param 일 때 사용할 파라미터명. 예: articleNo</span></label>
+      <input type="text" id="f-id-param" autocapitalize="off" spellcheck="false" />
+    </div>
+
+    <label for="f-keywords">keyword_filter <span class="hint">한 줄에 하나씩. 비우면 모든 글을 알립니다.</span></label>
+    <textarea id="f-keywords"></textarea>
+
+    <div class="switch">
+      <input type="checkbox" id="f-enabled" checked />
+      <label for="f-enabled" style="margin:0">활성화</label>
+    </div>
+
+    <div class="dialog-actions">
+      <button type="button" id="btn-cancel">취소</button>
+      <button type="submit" class="primary" id="btn-submit">저장</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function () {
+  "use strict";
+
+  var API = "https://api.github.com";
+  var LS = { token: "board-notify:token", owner: "board-notify:owner", repo: "board-notify:repo" };
+  var CONFIG_PATH = "sites.json";
+  var WORKFLOW_FILE = "check.yml";
+
+  var $ = function (id) { return document.getElementById(id); };
+  var state = { sites: [], sha: null, editingIndex: -1, defaultBranch: null };
+
+  // ---- 유틸 -------------------------------------------------------------
+  function encodeBase64(str) {
+    var bytes = new TextEncoder().encode(str);
+    var bin = "";
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin);
+  }
+
+  function decodeBase64(b64) {
+    var bin = atob(b64.replace(/\s/g, ""));
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder("utf-8").decode(bytes);
+  }
+
+  function lines(value) {
+    return (value || "").split("\n").map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length > 0; });
+  }
+
+  function say(message, kind) {
+    $("status").innerHTML = "";
+    var div = document.createElement("div");
+    div.className = "msg" + (kind ? " " + kind : "");
+    div.textContent = message;
+    $("status").appendChild(div);
+  }
+
+  // ---- 저장소 설정 ------------------------------------------------------
+  function guessRepo() {
+    var owner = "", repo = "";
+    var host = location.hostname;
+    if (host.endsWith(".github.io")) {
+      owner = host.replace(".github.io", "");
+      var seg = location.pathname.split("/").filter(Boolean);
+      repo = seg.length ? seg[0] : owner + ".github.io";
+    }
+    return { owner: owner, repo: repo };
+  }
+
+  function loadSettings() {
+    var guess = guessRepo();
+    $("owner").value = localStorage.getItem(LS.owner) || guess.owner;
+    $("repo").value = localStorage.getItem(LS.repo) || guess.repo;
+    $("token").value = localStorage.getItem(LS.token) || "";
+  }
+
+  function ctx() {
+    var owner = $("owner").value.trim();
+    var repo = $("repo").value.trim();
+    var token = $("token").value.trim();
+    if (!owner || !repo) throw new Error("Owner 와 Repository 를 입력하세요.");
+    if (!token) throw new Error("GitHub 토큰을 입력하세요.");
+    return { owner: owner, repo: repo, token: token };
+  }
+
+  // ---- GitHub API -------------------------------------------------------
+  function api(path, options) {
+    var c = ctx();
+    options = options || {};
+    return fetch(API + "/repos/" + c.owner + "/" + c.repo + path, {
+      method: options.method || "GET",
+      headers: {
+        Authorization: "Bearer " + c.token,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        "Content-Type": "application/json"
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined
+    }).then(function (res) {
+      if (res.status === 204) return null;
+      return res.text().then(function (text) {
+        var data = null;
+        try { data = text ? JSON.parse(text) : null; } catch (e) { data = null; }
+        if (!res.ok) {
+          var reason = (data && data.message) || res.statusText;
+          if (res.status === 401) reason = "토큰이 유효하지 않습니다 (401)";
+          if (res.status === 403) reason = "권한이 없습니다 — 토큰 권한을 확인하세요 (403)";
+          if (res.status === 404) reason = "찾을 수 없습니다 — 저장소/경로/토큰 권한을 확인하세요 (404)";
+          throw new Error(reason);
+        }
+        return data;
+      });
+    });
+  }
+
+  function loadSites() {
+    say("설정을 불러오는 중…");
+    return api("/contents/" + CONFIG_PATH + "?ref=" + encodeURIComponent(state.defaultBranch || "HEAD"))
+      .then(function (data) {
+        var parsed = JSON.parse(decodeBase64(data.content));
+        state.sites = Array.isArray(parsed.sites) ? parsed.sites : [];
+        state.sha = data.sha;
+        render();
+        say("사이트 " + state.sites.length + "개를 불러왔습니다.", "ok");
+      });
+  }
+
+  function loadBranchThenSites() {
+    return api("").then(function (repo) {
+      state.defaultBranch = repo.default_branch;
+      return loadSites();
+    }).catch(function (err) { say(err.message, "err"); });
+  }
+
+  function saveSites(message) {
+    var body = JSON.stringify({ sites: state.sites }, null, 2) + "\n";
+    return api("/contents/" + CONFIG_PATH, {
+      method: "PUT",
+      body: {
+        message: message,
+        content: encodeBase64(body),
+        sha: state.sha,
+        branch: state.defaultBranch || undefined
+      }
+    }).then(function (data) {
+      state.sha = data.content.sha;
+      render();
+      say("저장했습니다.", "ok");
+    });
+  }
+
+  function dispatchPreview(siteId) {
+    return api("/actions/workflows/" + WORKFLOW_FILE + "/dispatches", {
+      method: "POST",
+      body: {
+        ref: state.defaultBranch || "main",
+        inputs: { preview_site_id: siteId }
+      }
+    }).then(function () {
+      say("파싱 테스트를 실행했습니다. 잠시 후 텔레그램으로 상위 5건이 도착합니다.", "ok");
+    });
+  }
+
+  // ---- 렌더링 -----------------------------------------------------------
+  function render() {
+    var container = $("sites");
+    container.innerHTML = "";
+    $("site-count").textContent = String(state.sites.length);
+
+    if (!state.sites.length) {
+      var empty = document.createElement("p");
+      empty.className = "sub";
+      empty.style.margin = "0 0 10px";
+      empty.textContent = "등록된 사이트가 없습니다.";
+      container.appendChild(empty);
+      return;
+    }
+
+    state.sites.forEach(function (site, index) {
+      var card = document.createElement("div");
+      card.className = "site" + (site.enabled === false ? " off" : "");
+
+      var name = document.createElement("div");
+      name.className = "name";
+      name.textContent = site.name || site.id || "(이름 없음)";
+      var tag = document.createElement("span");
+      tag.className = "tag";
+      tag.textContent = (site.mode || "html") + (site.enabled === false ? " · 중지" : "");
+      name.appendChild(tag);
+      card.appendChild(name);
+
+      var meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = (site.id || "-") + " · " + (site.url || "-");
+      card.appendChild(meta);
+
+      if ((site.keyword_filter || []).length) {
+        var kw = document.createElement("div");
+        kw.className = "meta";
+        kw.textContent = "키워드: " + site.keyword_filter.join(", ");
+        card.appendChild(kw);
+      }
+
+      var actions = document.createElement("div");
+      actions.className = "actions";
+      actions.appendChild(button("수정", function () { openEditor(index); }));
+      actions.appendChild(button(site.enabled === false ? "켜기" : "끄기", function () {
+        site.enabled = site.enabled === false;
+        saveSites("Toggle " + site.id + " to " + site.enabled).catch(function (err) {
+          site.enabled = site.enabled === false;
+          render();
+          say(err.message, "err");
+        });
+      }));
+      actions.appendChild(button("파싱 테스트", function () {
+        if (!site.id) { say("ID 가 없는 사이트는 테스트할 수 없습니다.", "err"); return; }
+        say("파싱 테스트 요청 중…");
+        dispatchPreview(site.id).catch(function (err) { say(err.message, "err"); });
+      }));
+      var del = button("삭제", function () {
+        if (!confirm("'" + (site.name || site.id) + "' 을(를) 삭제할까요?")) return;
+        var removed = state.sites.splice(index, 1)[0];
+        saveSites("Remove site " + (removed.id || "")).catch(function (err) {
+          state.sites.splice(index, 0, removed);
+          render();
+          say(err.message, "err");
+        });
+      });
+      del.className = "danger";
+      actions.appendChild(del);
+      card.appendChild(actions);
+
+      container.appendChild(card);
+    });
+  }
+
+  function button(label, onClick) {
+    var el = document.createElement("button");
+    el.type = "button";
+    el.textContent = label;
+    el.addEventListener("click", onClick);
+    return el;
+  }
+
+  // ---- 편집 폼 ----------------------------------------------------------
+  function syncFormVisibility() {
+    var isRss = $("f-mode").value === "rss";
+    $("html-fields").classList.toggle("hidden", isRss);
+    $("id-param-field").classList.toggle("hidden", $("f-id-strategy").value !== "href_param");
+  }
+
+  function openEditor(index) {
+    state.editingIndex = index;
+    var site = index >= 0 ? state.sites[index] : {
+      enabled: true, mode: "html", id_strategy: "href_param", id_param: "", keyword_filter: []
+    };
+
+    $("editor-title").textContent = index >= 0 ? "사이트 수정" : "사이트 추가";
+    $("f-id").value = site.id || "";
+    $("f-name").value = site.name || "";
+    $("f-url").value = site.url || "";
+    $("f-mode").value = site.mode || "html";
+    $("f-item-selector").value = site.item_selector || "";
+    $("f-title-attr").value = site.title_attr || "";
+    $("f-title-strip").value = (site.title_strip || []).join("\n");
+    $("f-date-regex").value = site.date_regex || "";
+    $("f-id-strategy").value = site.id_strategy || "href_param";
+    $("f-id-param").value = site.id_param || "";
+    $("f-keywords").value = (site.keyword_filter || []).join("\n");
+    $("f-enabled").checked = site.enabled !== false;
+
+    syncFormVisibility();
+    $("editor").showModal();
+  }
+
+  function collectForm() {
+    var mode = $("f-mode").value;
+    var id = $("f-id").value.trim();
+
+    if (!/^[A-Za-z0-9_-]+$/.test(id)) throw new Error("ID 는 영문/숫자/하이픈/밑줄만 사용할 수 있습니다.");
+    var duplicate = state.sites.some(function (s, i) { return s.id === id && i !== state.editingIndex; });
+    if (duplicate) throw new Error("이미 같은 ID 의 사이트가 있습니다: " + id);
+
+    var site = {
+      id: id,
+      name: $("f-name").value.trim(),
+      url: $("f-url").value.trim(),
+      enabled: $("f-enabled").checked,
+      mode: mode,
+      item_selector: mode === "html" ? $("f-item-selector").value.trim() : "",
+      title_attr: mode === "html" ? $("f-title-attr").value.trim() : "",
+      title_strip: mode === "html" ? lines($("f-title-strip").value) : [],
+      date_regex: mode === "html" ? $("f-date-regex").value.trim() : "",
+      id_strategy: $("f-id-strategy").value,
+      id_param: $("f-id-strategy").value === "href_param" ? $("f-id-param").value.trim() : "",
+      keyword_filter: lines($("f-keywords").value)
+    };
+
+    if (mode === "html" && !site.item_selector) throw new Error("html 방식은 item_selector 가 필요합니다.");
+    if (site.id_strategy === "href_param" && !site.id_param) throw new Error("href_param 은 id_param 이 필요합니다.");
+    return site;
+  }
+
+  // ---- 이벤트 -----------------------------------------------------------
+  $("btn-save-token").addEventListener("click", function () {
+    localStorage.setItem(LS.token, $("token").value.trim());
+    localStorage.setItem(LS.owner, $("owner").value.trim());
+    localStorage.setItem(LS.repo, $("repo").value.trim());
+    say("이 브라우저에 저장했습니다.", "ok");
+    loadBranchThenSites();
+  });
+
+  $("btn-clear-token").addEventListener("click", function () {
+    localStorage.removeItem(LS.token);
+    $("token").value = "";
+    say("토큰을 삭제했습니다.", "ok");
+  });
+
+  $("btn-reload").addEventListener("click", function () { loadBranchThenSites(); });
+  $("btn-add").addEventListener("click", function () { openEditor(-1); });
+  $("btn-cancel").addEventListener("click", function () { $("editor").close(); });
+  $("f-mode").addEventListener("change", syncFormVisibility);
+  $("f-id-strategy").addEventListener("change", syncFormVisibility);
+
+  $("form").addEventListener("submit", function (event) {
+    event.preventDefault();
+    var site;
+    try { site = collectForm(); } catch (err) { alert(err.message); return; }
+
+    var index = state.editingIndex;
+    var backup = index >= 0 ? state.sites[index] : null;
+    if (index >= 0) state.sites[index] = site; else state.sites.push(site);
+
+    $("editor").close();
+    say("저장하는 중…");
+    saveSites((index >= 0 ? "Update site " : "Add site ") + site.id).catch(function (err) {
+      if (index >= 0) state.sites[index] = backup; else state.sites.pop();
+      render();
+      say(err.message, "err");
+    });
+  });
+
+  loadSettings();
+  render();
+  if (localStorage.getItem(LS.token) && $("owner").value && $("repo").value) {
+    loadBranchThenSites();
+  } else {
+    say("토큰을 입력하고 저장하면 설정을 불러옵니다.");
+  }
+})();
+</script>
+</body>
+</html>

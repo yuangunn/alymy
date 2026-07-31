@@ -1,0 +1,18 @@
+{
+  "sites": [
+    {
+      "id": "gsph-admission",
+      "name": "연세대 보건대학원 입학공지",
+      "url": "https://gsph.yonsei.ac.kr/gsph/admission/graduate/admission-notice.do",
+      "enabled": true,
+      "mode": "html",
+      "item_selector": "a[href*=\"articleNo=\"]",
+      "title_attr": "title",
+      "title_strip": ["자세히 보기"],
+      "date_regex": "\\d{4}-\\d{2}-\\d{2}",
+      "id_strategy": "href_param",
+      "id_param": "articleNo",
+      "keyword_filter": []
+    }
+  ]
+}
